@@ -1,0 +1,113 @@
+-- Crear Vista para obtener reservas activas
+CREATE VIEW VistaReservasActivas AS
+SELECT
+    r.IdReservacion,
+    h.NumeroHabitacion,
+    c.Nombre AS ClienteNombre,
+    t.NombreTipo AS TipoHabitacion,
+    r.FechaInicio,
+    r.FechaFin,
+    r.TotalPago,
+    e.Nombre AS EmpleadoNombre,
+    er.NombreEstado AS EstadoReservacion
+FROM
+    Reservaciones r
+    JOIN Habitaciones h ON r.NumeroHabitacion = h.NumeroHabitacion
+    JOIN Clientes c ON r.IdCliente = c.IdCliente
+    JOIN TiposHabitaciones t ON h.IdTipoHabitacion = t.IdTipoHabitacion
+    JOIN Empleados e ON r.IdEmpleado = e.IdEmpleado
+    JOIN EstadosReservaciones er ON r.IdEstado = er.IdEstado
+WHERE
+    r.FechaFin >= GETDATE() AND r.FechaInicio <= GETDATE();
+GO
+
+-- Crear Vista para obtener los clientes frecuentes
+CREATE VIEW VistaClientesFrecuentes AS
+SELECT
+    cf.IdFrecuente,
+    c.Nombre AS ClienteNombre,
+    cf.PuntosAcumulados,
+    cf.BeneficiosEspeciales,
+    cf.FechaCreacion,
+    cf.Estado
+FROM
+    ClientesFrecuentes cf
+    JOIN Clientes c ON cf.IdCliente = c.IdCliente
+WHERE
+    cf.PuntosAcumulados >= 100;  -- Considerar a clientes con más de 100 puntos como frecuentes
+GO
+
+-- Crear Procedimiento Almacenado para obtener habitaciones disponibles en una fecha
+CREATE PROCEDURE ObtenerHabitacionesDisponibles
+    @FechaInicio DATE,
+    @FechaFin DATE
+AS
+BEGIN
+    SELECT
+        h.NumeroHabitacion,
+        th.NombreTipo,
+        h.Piso,
+        h.Area,
+        h.Vista,
+        th.PrecioBase
+    FROM
+        Habitaciones h
+        JOIN TiposHabitaciones th ON h.IdTipoHabitacion = th.IdTipoHabitacion
+    WHERE
+        h.Estado = 'Disponible'
+        AND h.NumeroHabitacion NOT IN (
+            SELECT NumeroHabitacion
+            FROM Reservaciones
+            WHERE (FechaInicio BETWEEN @FechaInicio AND @FechaFin)
+               OR (FechaFin BETWEEN @FechaInicio AND @FechaFin)
+        );
+END;
+GO
+
+-- Crear Procedimiento Almacenado para registrar un pago
+CREATE PROCEDURE RegistrarPago
+    @IdReservacion INT,
+    @Monto DECIMAL(10, 2),
+    @MetodoPago NVARCHAR(50),
+    @FechaPago DATE,
+    @Estado NVARCHAR(20),
+    @ConfirmadoPor INT
+AS
+BEGIN
+    INSERT INTO Pagos (IdReservacion, Monto, MetodoPago, FechaPago, Estado, ConfirmadoPor)
+    VALUES (@IdReservacion, @Monto, @MetodoPago, @FechaPago, @Estado, @ConfirmadoPor);
+END;
+GO
+
+-- Crear Trigger para actualizar el estado de la habitación cuando se realice una reserva
+CREATE TRIGGER ActualizarEstadoHabitacionReserva
+ON Reservaciones
+AFTER INSERT
+AS
+BEGIN
+    DECLARE @NumeroHabitacion INT;
+    SELECT @NumeroHabitacion = NumeroHabitacion FROM INSERTED;
+
+    UPDATE Habitaciones
+    SET Estado = 'Reservada'
+    WHERE NumeroHabitacion = @NumeroHabitacion;
+END;
+GO
+
+-- Crear Trigger para actualizar el estado de la habitación cuando se cancele una reserva
+CREATE TRIGGER ActualizarEstadoHabitacionCancelacion
+ON Reservaciones
+AFTER UPDATE
+AS
+BEGIN
+    DECLARE @NumeroHabitacion INT, @IdEstado INT;
+    SELECT @NumeroHabitacion = NumeroHabitacion, @IdEstado = IdEstado FROM INSERTED;
+
+    IF EXISTS (SELECT 1 FROM INSERTED WHERE IdEstado = 3) -- 3: Estado de cancelación
+    BEGIN
+        UPDATE Habitaciones
+        SET Estado = 'Disponible'
+        WHERE NumeroHabitacion = @NumeroHabitacion;
+    END
+END;
+GO

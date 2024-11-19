@@ -1,0 +1,208 @@
+-- Registrar un Cliente
+CREATE PROCEDURE RegistrarCliente
+    @Nombre NVARCHAR(100),
+    @RUT NVARCHAR(20),
+    @Telefono NVARCHAR(15),
+    @Email NVARCHAR(100),
+    @Direccion NVARCHAR(255),
+    @IdTipoCliente INT,
+    @FechaRegistro DATE
+AS
+BEGIN
+    INSERT INTO Clientes (Nombre, RUT, Telefono, Email, Direccion, IdTipoCliente, FechaRegistro)
+    VALUES (@Nombre, @RUT, @Telefono, @Email, @Direccion, @IdTipoCliente, @FechaRegistro);
+END;
+GO
+
+-- Registrar un Empleado
+CREATE PROCEDURE RegistrarEmpleado
+    @Nombre NVARCHAR(100),
+    @Telefono NVARCHAR(15),
+    @Email NVARCHAR(100),
+    @Direccion NVARCHAR(255),
+    @IdRol INT,
+    @FechaContratacion DATE
+AS
+BEGIN
+    INSERT INTO Empleados (Nombre, Telefono, Email, Direccion, IdRol, FechaContratacion)
+    VALUES (@Nombre, @Telefono, @Email, @Direccion, @IdRol, @FechaContratacion);
+END;
+GO
+
+-- Registrar una Reservación
+CREATE PROCEDURE RegistrarReservacion
+    @NumeroHabitacion INT,
+    @IdCliente INT,
+    @FechaInicio DATE,
+    @FechaFin DATE,
+    @IdEstado INT,
+    @IdEmpleado INT,
+    @IdDescuento INT,
+    @TotalPago DECIMAL(10, 2),
+    @Observaciones NVARCHAR(MAX)
+AS
+BEGIN
+    INSERT INTO Reservaciones (NumeroHabitacion, IdCliente, FechaInicio, FechaFin, IdEstado, IdEmpleado, IdDescuento, TotalPago, Observaciones)
+    VALUES (@NumeroHabitacion, @IdCliente, @FechaInicio, @FechaFin, @IdEstado, @IdEmpleado, @IdDescuento, @TotalPago, @Observaciones);
+END;
+GO
+
+-- Registrar un Pago
+CREATE PROCEDURE RegistrarPago1
+    @IdReservacion INT,
+    @Monto DECIMAL(10, 2),
+    @MetodoPago NVARCHAR(50),
+    @FechaPago DATE,
+    @Estado NVARCHAR(20),
+    @ConfirmadoPor INT
+AS
+BEGIN
+    INSERT INTO Pagos (IdReservacion, Monto, MetodoPago, FechaPago, Estado, ConfirmadoPor)
+    VALUES (@IdReservacion, @Monto, @MetodoPago, @FechaPago, @Estado, @ConfirmadoPor);
+END;
+GO
+
+-- Obtener Habitaciones Disponibles
+CREATE PROCEDURE ObtenerHabitacionesDisponibles1
+    @FechaInicio DATE,
+    @FechaFin DATE
+AS
+BEGIN
+    SELECT
+        h.NumeroHabitacion,
+        th.NombreTipo,
+        h.Piso,
+        h.Area,
+        h.Vista,
+        th.PrecioBase
+    FROM
+        Habitaciones h
+        JOIN TiposHabitaciones th ON h.IdTipoHabitacion = th.IdTipoHabitacion
+    WHERE
+        h.Estado = 'Disponible'
+        AND h.NumeroHabitacion NOT IN (
+            SELECT NumeroHabitacion
+            FROM Reservaciones
+            WHERE (FechaInicio BETWEEN @FechaInicio AND @FechaFin)
+               OR (FechaFin BETWEEN @FechaInicio AND @FechaFin)
+        );
+END;
+GO
+
+-- Actualizar el Estado de la Habitación después de una Reservación
+CREATE PROCEDURE ActualizarEstadoHabitacionReserva1
+    @NumeroHabitacion INT,
+    @NuevoEstado NVARCHAR(20)
+AS
+BEGIN
+    UPDATE Habitaciones
+    SET Estado = @NuevoEstado
+    WHERE NumeroHabitacion = @NumeroHabitacion;
+END;
+GO
+
+-- Actualizar el Estado de la Reservación
+CREATE PROCEDURE ActualizarEstadoReservacion1
+    @IdReservacion INT,
+    @NuevoEstado INT
+AS
+BEGIN
+    UPDATE Reservaciones
+    SET IdEstado = @NuevoEstado
+    WHERE IdReservacion = @IdReservacion;
+END;
+GO
+
+-- Actualizar el Precio de una Habitación
+CREATE PROCEDURE ActualizarPrecioHabitacion
+    @IdTipoHabitacion INT,
+    @NuevoPrecio DECIMAL(10, 2)
+AS
+BEGIN
+    UPDATE TiposHabitaciones
+    SET PrecioBase = @NuevoPrecio
+    WHERE IdTipoHabitacion = @IdTipoHabitacion;
+END;
+GO
+
+-- Eliminar una Reservación
+CREATE PROCEDURE EliminarReservacion1
+    @IdReservacion INT
+AS
+BEGIN
+    DELETE FROM Reservaciones
+    WHERE IdReservacion = @IdReservacion;
+END;
+GO
+
+-- Eliminar un Cliente
+CREATE PROCEDURE EliminarCliente1
+    @IdCliente INT
+AS
+BEGIN
+    DELETE FROM Clientes
+    WHERE IdCliente = @IdCliente;
+END;
+GO
+
+-- Eliminar un Empleado
+CREATE PROCEDURE EliminarEmpleado1
+    @IdEmpleado INT
+AS
+BEGIN
+    DELETE FROM Empleados
+    WHERE IdEmpleado = @IdEmpleado;
+END;
+GO
+
+-- Obtener los Descuentos Activos
+CREATE PROCEDURE ObtenerDescuentosActivos1
+AS
+BEGIN
+    SELECT
+        d.IdDescuento,
+        t.NombreTipo AS TipoCliente,
+        d.PorcentajeDescuento,
+        d.Condiciones,
+        d.FechaInicio,
+        d.FechaFin
+    FROM
+        Descuentos d
+        JOIN TiposClientes t ON d.IdTipoCliente = t.IdTipoCliente
+    WHERE
+        d.FechaFin >= GETDATE() OR d.FechaFin IS NULL;
+END;
+GO
+
+-- Obtener Estado de Pagos de una Reservación
+CREATE PROCEDURE ObtenerEstadoPagoReservacion1
+    @IdReservacion INT
+AS
+BEGIN
+    SELECT
+        p.IdPago,
+        p.Monto,
+        p.MetodoPago,
+        p.FechaPago,
+        p.Estado
+    FROM
+        Pagos p
+    WHERE
+        p.IdReservacion = @IdReservacion;
+END;
+GO
+
+-- Registrar Uso de un Servicio Adicional
+CREATE PROCEDURE RegistrarUsoServicio1
+    @IdReservacion INT,
+    @IdServicio INT,
+    @Cantidad INT,
+    @CostoTotal DECIMAL(10, 2),
+    @FechaUso DATE,
+    @Observaciones NVARCHAR(MAX)
+AS
+BEGIN
+    INSERT INTO UsoServicios (IdReservacion, IdServicio, Cantidad, CostoTotal, FechaUso, Observaciones)
+    VALUES (@IdReservacion, @IdServicio, @Cantidad, @CostoTotal, @FechaUso, @Observaciones);
+END;
+GO

@@ -1,0 +1,213 @@
+create database hotel 
+go
+
+use hotel 
+go
+
+-- Tabla Configuraciones del Sistema
+CREATE TABLE ConfiguracionesSistema (
+    IdConfiguracion INT PRIMARY KEY,
+    Clave NVARCHAR(100) NOT NULL,
+    Valor NVARCHAR(MAX) NOT NULL,
+    Descripcion NVARCHAR(MAX),
+    FechaCreacion DATE NOT NULL,
+    UltimaModificacion DATE,
+    Estado NVARCHAR(20) NOT NULL
+);
+
+-- Tabla Tipos de Habitaciones
+CREATE TABLE TiposHabitaciones (
+    IdTipoHabitacion INT PRIMARY KEY,
+    NombreTipo NVARCHAR(50) NOT NULL,
+    CapacidadMaxima INT NOT NULL,
+    ServiciosIncluidos NVARCHAR(MAX),
+    PrecioBase DECIMAL(10, 2) NOT NULL,
+    FechaCreacion DATE NOT NULL,
+    UltimaModificacion DATE,
+    Estado NVARCHAR(20) NOT NULL,
+    Descripcion NVARCHAR(MAX)
+);
+
+-- Tabla Habitaciones
+CREATE TABLE Habitaciones (
+    NumeroHabitacion INT PRIMARY KEY,
+    IdTipoHabitacion INT NOT NULL,
+    Estado NVARCHAR(20) NOT NULL,
+    Piso INT NOT NULL,
+    Area DECIMAL(10, 2),
+    Vista NVARCHAR(50),
+    FechaCreacion DATE NOT NULL,
+    UltimaModificacion DATE,
+    Observaciones NVARCHAR(MAX),
+    FOREIGN KEY (IdTipoHabitacion) REFERENCES TiposHabitaciones(IdTipoHabitacion)
+);
+
+-- Tabla Tipos de Clientes
+CREATE TABLE TiposClientes (
+    IdTipoCliente INT PRIMARY KEY,
+    NombreTipo NVARCHAR(50) NOT NULL,
+    Descuento DECIMAL(5, 2),
+    Beneficios NVARCHAR(MAX),
+    Restricciones NVARCHAR(MAX),
+    FechaCreacion DATE NOT NULL,
+    Estado NVARCHAR(20) NOT NULL,
+    Comentarios NVARCHAR(MAX)
+);
+
+-- Tabla Clientes
+CREATE TABLE Clientes (
+    IdCliente INT PRIMARY KEY,
+    Nombre NVARCHAR(100) NOT NULL,
+    RUT NVARCHAR(20),
+    Telefono NVARCHAR(15),
+    Email NVARCHAR(100),
+    Direccion NVARCHAR(255),
+    IdTipoCliente INT,
+    FechaRegistro DATE NOT NULL,
+    UltimaReserva DATE,
+    FOREIGN KEY (IdTipoCliente) REFERENCES TiposClientes(IdTipoCliente)
+);
+
+-- Tabla Roles de Empleados
+CREATE TABLE RolesEmpleados (
+    IdRol INT PRIMARY KEY,
+    NombreRol NVARCHAR(50) NOT NULL,
+    Descripcion NVARCHAR(MAX),
+    Permisos NVARCHAR(MAX),
+    FechaCreacion DATE NOT NULL,
+    Estado NVARCHAR(20) NOT NULL,
+    Comentarios NVARCHAR(MAX)
+);
+
+-- Tabla Empleados
+CREATE TABLE Empleados (
+    IdEmpleado INT PRIMARY KEY,
+    Nombre NVARCHAR(100) NOT NULL,
+    Telefono NVARCHAR(15),
+    Email NVARCHAR(100),
+    Direccion NVARCHAR(255),
+    IdRol INT,
+    FechaContratacion DATE NOT NULL,
+    UltimaEvaluacion DATE,
+    Observaciones NVARCHAR(MAX),
+    FOREIGN KEY (IdRol) REFERENCES RolesEmpleados(IdRol)
+);
+
+-- Tabla Estados de Reservaciones
+CREATE TABLE EstadosReservaciones (
+    IdEstado INT PRIMARY KEY,
+    NombreEstado NVARCHAR(50) NOT NULL,
+    Descripcion NVARCHAR(255),
+    FechaCreacion DATE NOT NULL,
+    UltimaModificacion DATE,
+    Estado NVARCHAR(20) NOT NULL,
+    Comentarios NVARCHAR(MAX)
+);
+
+-- Tabla Descuentos
+CREATE TABLE Descuentos (
+    IdDescuento INT PRIMARY KEY,
+    IdTipoCliente INT NOT NULL,
+    PorcentajeDescuento DECIMAL(5, 2),
+    Condiciones NVARCHAR(MAX),
+    FechaInicio DATE NOT NULL,
+    FechaFin DATE,
+    Estado NVARCHAR(20) NOT NULL,
+    Comentarios NVARCHAR(MAX),
+    FOREIGN KEY (IdTipoCliente) REFERENCES TiposClientes(IdTipoCliente)
+);
+
+-- Tabla Reservaciones
+CREATE TABLE Reservaciones (
+    IdReservacion INT PRIMARY KEY,
+    NumeroHabitacion INT NOT NULL,
+    IdCliente INT NOT NULL,
+    FechaInicio DATE NOT NULL,
+    FechaFin DATE NOT NULL,
+    IdEstado INT NOT NULL,
+    IdEmpleado INT,
+    IdDescuento INT,
+    TotalPago DECIMAL(10, 2),
+    Observaciones NVARCHAR(MAX),
+    FOREIGN KEY (NumeroHabitacion) REFERENCES Habitaciones(NumeroHabitacion),
+    FOREIGN KEY (IdCliente) REFERENCES Clientes(IdCliente),
+    FOREIGN KEY (IdEmpleado) REFERENCES Empleados(IdEmpleado),
+    FOREIGN KEY (IdEstado) REFERENCES EstadosReservaciones(IdEstado),
+    FOREIGN KEY (IdDescuento) REFERENCES Descuentos(IdDescuento)
+);
+
+-- Tabla Precios
+CREATE TABLE Precios (
+    IdPrecio INT PRIMARY KEY,
+    IdTipoHabitacion INT NOT NULL,
+    PrecioPorNoche DECIMAL(10, 2) NOT NULL,
+    FechaInicio DATE NOT NULL,
+    FechaFin DATE,
+    Estado NVARCHAR(20) NOT NULL,
+    Comentarios NVARCHAR(MAX),
+    FOREIGN KEY (IdTipoHabitacion) REFERENCES TiposHabitaciones(IdTipoHabitacion)
+);
+
+-- Tabla Inventario
+CREATE TABLE Inventario (
+    IdItem INT PRIMARY KEY,
+    NombreItem NVARCHAR(100) NOT NULL,
+    Categoria NVARCHAR(50),
+    Cantidad INT NOT NULL,
+    Estado NVARCHAR(20) NOT NULL,
+    FechaIngreso DATE NOT NULL,
+    UltimaModificacion DATE,
+    Observaciones NVARCHAR(MAX)
+);
+
+-- Tabla Servicios Adicionales
+CREATE TABLE ServiciosAdicionales (
+    IdServicio INT PRIMARY KEY,
+    NombreServicio NVARCHAR(100) NOT NULL,
+    Costo DECIMAL(10, 2) NOT NULL,
+    Descripcion NVARCHAR(MAX),
+    Disponibilidad NVARCHAR(20),
+    FechaCreacion DATE NOT NULL,
+    UltimaModificacion DATE,
+    Observaciones NVARCHAR(MAX),
+    FOREIGN KEY (IdServicio) REFERENCES Inventario(IdItem)
+);
+
+-- Tabla Pagos
+CREATE TABLE Pagos (
+    IdPago INT PRIMARY KEY,
+    IdReservacion INT NOT NULL,
+    Monto DECIMAL(10, 2) NOT NULL,
+    MetodoPago NVARCHAR(50),
+    FechaPago DATE NOT NULL,
+    Estado NVARCHAR(20) NOT NULL,
+    Comentarios NVARCHAR(MAX),
+    ConfirmadoPor INT,
+    FOREIGN KEY (IdReservacion) REFERENCES Reservaciones(IdReservacion)
+);
+
+-- Tabla Clientes Frecuentes
+CREATE TABLE ClientesFrecuentes (
+    IdFrecuente INT PRIMARY KEY,
+    IdCliente INT NOT NULL,
+    PuntosAcumulados INT,
+    UltimaActividad DATE,
+    BeneficiosEspeciales NVARCHAR(MAX),
+    Estado NVARCHAR(20) NOT NULL,
+    FechaCreacion DATE NOT NULL,
+    Comentarios NVARCHAR(MAX),
+    FOREIGN KEY (IdCliente) REFERENCES Clientes(IdCliente)
+);
+
+-- Tabla Uso de Servicios
+CREATE TABLE UsoServicios (
+    IdUso INT PRIMARY KEY,
+    IdReservacion INT NOT NULL,
+    IdServicio INT NOT NULL,
+    Cantidad INT NOT NULL,
+    CostoTotal DECIMAL(10, 2) NOT NULL,
+    FechaUso DATE NOT NULL,
+    Observaciones NVARCHAR(MAX),
+    FOREIGN KEY (IdReservacion) REFERENCES Reservaciones(IdReservacion),
+    FOREIGN KEY (IdServicio) REFERENCES ServiciosAdicionales(IdServicio)
+);
